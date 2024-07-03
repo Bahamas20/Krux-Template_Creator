@@ -224,6 +224,84 @@ def generate_template_json(theme, is_trending, font_program1, font_program2,
     
     return data
 
+def generate_page_json(story_template_id, page_type, page_width, page_height,
+                       image, low_res_image,
+                       text1_text=None, text1_font_size=None, text1_stroke_width=None,
+                       text1_font_program=None, text1_text_align=None, text1_line_height=None,
+                       text1_text_color=None, text1_width=None, text1_top=None, text1_left=None,
+                       text2_text=None, text2_font_size=None, text2_stroke_width=None,
+                       text2_font_program=None, text2_text_align=None, text2_line_height=None,
+                       text2_text_color=None, text2_width=None, text2_top=None, text2_left=None,
+                       text3_text=None, text3_font_size=None, text3_stroke_width=None,
+                       text3_font_program=None, text3_text_align=None, text3_line_height=None,
+                       text3_text_color=None, text3_width=None, text3_top=None, text3_left=None,
+                       text4_text=None, text4_font_size=None, text4_stroke_width=None,
+                       text4_font_program=None, text4_text_align=None, text4_line_height=None,
+                       text4_text_color=None, text4_width=None, text4_top=None, text4_left=None):
+
+    data = {
+        "StoryTemplateId": story_template_id,
+        "PageType": page_type,
+        "PageWidth": page_width,
+        "PageHeight": page_height,
+        "Image": image,
+        "LowResImage": low_res_image,
+    }
+    
+    # Optional fields for TextElement1 if provided
+    if text1_text is not None:
+        data["TextElement1.Text"] = text1_text
+        data["TextElement1.FontSize"] = text1_font_size
+        data["TextElement1.StrokeWidth"] = text1_stroke_width
+        data["TextElement1.FontProgram"] = text1_font_program
+        data["TextElement1.TextAlign"] = text1_text_align
+        data["TextElement1.LineHeight"] = text1_line_height
+        data["TextElement1.TextColor"] = text1_text_color
+        data["TextElement1.Width"] = text1_width
+        data["TextElement1.Top"] = text1_top
+        data["TextElement1.Left"] = text1_left
+    
+    # Optional fields for TextElement2
+    if text2_text is not None:
+        data["TextElement2.Text"] = text2_text
+        data["TextElement2.FontSize"] = text2_font_size
+        data["TextElement2.StrokeWidth"] = text2_stroke_width
+        data["TextElement2.FontProgram"] = text2_font_program
+        data["TextElement2.TextAlign"] = text2_text_align
+        data["TextElement2.LineHeight"] = text2_line_height
+        data["TextElement2.TextColor"] = text2_text_color
+        data["TextElement2.Width"] = text2_width
+        data["TextElement2.Top"] = text2_top
+        data["TextElement2.Left"] = text2_left
+    
+    # Optional fields for TextElement3
+    if text3_text is not None:
+        data["TextElement3.Text"] = text3_text
+        data["TextElement3.FontSize"] = text3_font_size
+        data["TextElement3.StrokeWidth"] = text3_stroke_width
+        data["TextElement3.FontProgram"] = text3_font_program
+        data["TextElement3.TextAlign"] = text3_text_align
+        data["TextElement3.LineHeight"] = text3_line_height
+        data["TextElement3.TextColor"] = text3_text_color
+        data["TextElement3.Width"] = text3_width
+        data["TextElement3.Top"] = text3_top
+        data["TextElement3.Left"] = text3_left
+    
+    # Optional fields for TextElement4
+    if text4_text is not None:
+        data["TextElement4.Text"] = text4_text
+        data["TextElement4.FontSize"] = text4_font_size
+        data["TextElement4.StrokeWidth"] = text4_stroke_width
+        data["TextElement4.FontProgram"] = text4_font_program
+        data["TextElement4.TextAlign"] = text4_text_align
+        data["TextElement4.LineHeight"] = text4_line_height
+        data["TextElement4.TextColor"] = text4_text_color
+        data["TextElement4.Width"] = text4_width
+        data["TextElement4.Top"] = text4_top
+        data["TextElement4.Left"] = text4_left
+
+    return data
+
 
 def main(pdf_file):
     try:
