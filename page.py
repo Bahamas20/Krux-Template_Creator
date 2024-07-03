@@ -1,9 +1,23 @@
 import fitz
 
 class Page:
-    def __init__(self,page):
+    def __init__(self,page,page_number):
         self.page = page
+        self.page_number = page_number
     
+    def get_page_type(self):
+        if self.page_number == 0:
+            return 0
+        elif self.page_number == -1:
+            return 1
+        else:
+            return 2
+    def get_page_width(self):
+        return self.page.rect.width
+
+    def get_page_height(self):
+        return self.page.rect.height
+  
     def get_center(self,bbox):
         """
         Gets the center coordinates of a bbox
