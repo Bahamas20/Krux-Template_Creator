@@ -18,6 +18,7 @@ class Page:
     def get_page_height(self):
         return self.page.rect.height
     
+    
     def get_text_boxes_info(self):
         """
         Gets detailed information about text bounding boxes on the page.
@@ -33,20 +34,36 @@ class Page:
                     for span in line["spans"]:
                         bbox = span["bbox"]
                         text = span["text"]
-                        font_size = span["size"]
+                        font_size = span.get("size", None)
+                        font = span.get("font", None)
+                        stroke_width = None
+                        text_align = 'center'
+                        line_height = font_size * 1.2
+                        text_color = '#' + str(span.get("color", None))
+                        width = bbox[2] - bbox[0] 
+                        top = bbox[1] 
+                        left = bbox[0]
 
                         text_box_info = {
                             "bbox": bbox,
                             "text": text,
                             "font_size": font_size,
-                            # Add more fields as needed
+                            "font": font,
+                            "stroke_width": stroke_width,
+                            "text_align": text_align,
+                            "line_height": line_height,
+                            "text_color": text_color,
+                            "width": width,
+                            "top": top,
+                            "left": left
                         }
                         text_boxes_info.append(text_box_info)
 
-        # Sort by top to bottom, then left to right
-        text_boxes_info.sort(key=lambda x: (x["bbox"][1], x["bbox"][0]))
+        # Sort from top to bottom, then left to right
+        text_boxes_info.sort(key=lambda x: (x["top"], x["left"]))
 
         return text_boxes_info
+
   
     def get_center(self,bbox):
         """
