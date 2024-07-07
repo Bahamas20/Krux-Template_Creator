@@ -13,10 +13,10 @@ class Page:
         else:
             return 2
     def get_page_width(self):
-        return self.page.rect.width
+        return int(self.page.rect.width)
 
     def get_page_height(self):
-        return self.page.rect.height
+        return int(self.page.rect.height)
     
     
     def get_text_boxes_info(self):
@@ -47,15 +47,15 @@ class Page:
                         text_box_info = {
                             "bbox": bbox,
                             "text": text,
-                            "font_size": font_size,
+                            "font_size": int(font_size),
                             "font": font,
                             "stroke_width": stroke_width,
                             "text_align": text_align,
-                            "line_height": line_height,
+                            "line_height": int(line_height),
                             "text_color": text_color,
-                            "width": width,
-                            "top": top,
-                            "left": left
+                            "width": int(width),
+                            "top": int(top),
+                            "left": int(left)
                         }
                         text_boxes_info.append(text_box_info)
 
