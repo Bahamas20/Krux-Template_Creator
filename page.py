@@ -1,6 +1,10 @@
+import os
+import tempfile
 import fitz
+from PIL import Image
 
 class Page:
+
     def __init__(self,page,page_number):
         self.page = page
         self.page_number = page_number
@@ -12,11 +16,12 @@ class Page:
             return 1
         else:
             return 2
+    
     def get_page_width(self):
-        return int(self.page.rect.width)
+        return int(self.page.rect.width * 1536/708)
 
     def get_page_height(self):
-        return int(self.page.rect.height)
+        return int(self.page.rect.height * 1536/708) 
     
     
     def get_text_boxes_info(self):
@@ -27,6 +32,8 @@ class Page:
         """
         text_boxes_info = []
         blocks = self.page.get_text("dict")["blocks"]
+        ratio = 1536/708
+
 
         for block in blocks:
             if "lines" in block:
@@ -34,15 +41,24 @@ class Page:
                     for span in line["spans"]:
                         bbox = span["bbox"]
                         text = span["text"]
-                        font_size = span.get("size", None)
+                        font_size = span.get("size", None) * ratio
                         font = span.get("font", None)
+                        if font == 'SueEllenFrancisco':
+                            font = 'Sue Ellen Francisco.ttf'
+                        # Add more conditions if necessary
+                        elif font == 'LettersforLearners':
+                            font = 'Letters for Learners.ttf'
                         stroke_width = None
                         text_align = 'center'
-                        line_height = font_size * 1.2
-                        text_color = '#' + str(span.get("color", None))
-                        width = bbox[2] - bbox[0] 
-                        top = bbox[1] 
-                        left = bbox[0]
+                        line_height = font_size * 1.2 
+                        color_value = span.get("color", None)
+                        if color_value is not None:
+                            text_color = f"#{color_value:06x}"
+                        else:
+                            text_color = None
+                        width = (bbox[2] - bbox[0]) * ratio
+                        top = bbox[1] * ratio
+                        left = bbox[0] * ratio
 
                         text_box_info = {
                             "bbox": bbox,
@@ -63,6 +79,82 @@ class Page:
         text_boxes_info.sort(key=lambda x: (x["top"], x["left"]))
 
         return text_boxes_info
+    
+    def get_background_img(self):
+        image_list = self.page.get_images()
+
+        max_width = -1
+        max_height = -1
+        background_image = None
+
+        for img in image_list:
+            print(img)
+            xref = img[0]  # get the XREF of the image
+            width = img[2]
+            height = img[3]
+
+            # Compare dimensions to find the image with the highest width and height
+            if width == 1536 and height == 1536:
+                max_width = width
+                max_height = height
+                background_image = (xref, width, height)  # Store xref and dimensions
+        
+        return background_image
+
+    def save_background_image(self,file):
+        # Assume self.page and self.get_background_img are properly set up
+        background_img = self.get_background_img()
+
+        if background_img:
+            xref, width, height = background_img
+            # Extract and save the largest image as PNG
+            try:
+                pix = fitz.Pixmap(file, xref)
+                if pix.n - pix.alpha > 3:  # CMYK: convert to RGB
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+            # Create a temporary file to save the image
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                    tmp_file_path = tmp_file.name
+                    pix.save(tmp_file_path)
+
+                files = {
+                    'Image': ('norm_image_{}.png'.format(xref), open(tmp_file_path, 'rb'), 'image/png'),
+                    'LowResImage': ('low_res_{}.jpeg'.format(xref), open(tmp_file_path, 'rb'), 'image/jpeg')
+                }
+
+                os.remove(tmp_file_path)  # Clean up temporary file
+
+                return files
+
+            except Exception as e:
+                print(f"Error saving image: {e}")
+            finally:
+                if pix:
+                    pix = None  # Release resources after saving
+
+        else:
+            try:
+                # Create a small transparent PNG image
+                empty_image = Image.new('RGB', (1536,1536), (255, 255, 255))
+                
+                # Save the empty image to a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                    tmp_file_path = tmp_file.name
+                    empty_image.save(tmp_file_path, format='PNG')
+
+                # Prepare the files dictionary with the empty image
+                files = {
+                    'Image': ('empty_image.png', open(tmp_file_path, 'rb'), 'image/png'),
+                    'LowResImage': ('empty_image.png', open(tmp_file_path, 'rb'), 'image/png')  # Assuming low-res image should also be empty
+                }
+
+                os.remove(tmp_file_path)  # Clean up temporary file
+
+                return files
+            
+            except Exception as e:
+                print(f"Error creating empty image: {e}")
+
 
   
     def get_center(self,bbox):
