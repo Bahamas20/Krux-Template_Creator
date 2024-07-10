@@ -18,11 +18,10 @@ class Page:
             return 2
     
     def get_page_width(self):
-        return int(self.page.rect.width * 1536/708)
+        return int(self.page.rect.width)
 
     def get_page_height(self):
-        return int(self.page.rect.height * 1536/708) 
-    
+        return int(self.page.rect.height)  
     
     def get_text_boxes_info(self):
         """
@@ -32,33 +31,23 @@ class Page:
         """
         text_boxes_info = []
         blocks = self.page.get_text("dict")["blocks"]
-        ratio = 1536/708
-
 
         for block in blocks:
             if "lines" in block:
                 for line in block["lines"]:
                     for span in line["spans"]:
+                        
                         bbox = span["bbox"]
                         text = span["text"]
-                        font_size = span.get("size", None) * ratio
-                        font = span.get("font", None)
-                        if font == 'SueEllenFrancisco':
-                            font = 'Sue Ellen Francisco.ttf'
-                        # Add more conditions if necessary
-                        elif font == 'LettersforLearners':
-                            font = 'Letters for Learners.ttf'
+                        font_size = span.get("size", None) 
+                        font = self.get_font(span.get("font", None))
                         stroke_width = None
                         text_align = 'center'
                         line_height = font_size * 1.2 
-                        color_value = span.get("color", None)
-                        if color_value is not None:
-                            text_color = f"#{color_value:06x}"
-                        else:
-                            text_color = None
-                        width = (bbox[2] - bbox[0]) * ratio
-                        top = bbox[1] * ratio
-                        left = bbox[0] * ratio
+                        color_value = self.get_color(span.get("color", None))
+                        width = (bbox[2] - bbox[0]) + 5
+                        top = bbox[1] 
+                        left = bbox[0]
 
                         text_box_info = {
                             "bbox": bbox,
@@ -68,84 +57,104 @@ class Page:
                             "stroke_width": stroke_width,
                             "text_align": text_align,
                             "line_height": int(line_height),
-                            "text_color": text_color,
+                            "text_color": color_value,
                             "width": int(width),
                             "top": int(top),
                             "left": int(left)
                         }
                         text_boxes_info.append(text_box_info)
 
-        # Sort from top to bottom, then left to right
+
         text_boxes_info.sort(key=lambda x: (x["top"], x["left"]))
 
         return text_boxes_info
+
+    def get_font(font):
+        if font == 'SueEllenFrancisco':
+            return 'Sue Ellen Francisco.ttf'
+        elif font == 'LettersforLearners':
+            return 'Letters for Learners.ttf'
+        else:
+            return None
     
+    def get_color(color_value):
+        if color_value is not None:
+            return f"#{color_value:06x}"
+        else:
+            return None
+           
     def get_background_img(self):
         image_list = self.page.get_images()
 
-        max_width = -1
-        max_height = -1
+        # max_width = -1
+        # max_height = -1
         background_image = None
 
         for img in image_list:
-            print(img)
-            xref = img[0]  # get the XREF of the image
+            xref = img[0]  
             width = img[2]
             height = img[3]
 
-            # Compare dimensions to find the image with the highest width and height
             if width == 1536 and height == 1536:
-                max_width = width
-                max_height = height
-                background_image = (xref, width, height)  # Store xref and dimensions
+                # max_width = width
+                # max_height = height
+                background_image = (xref, width, height)
         
         return background_image
 
     def save_background_image(self,file):
-        # Assume self.page and self.get_background_img are properly set up
+
         background_img = self.get_background_img()
+        resized_width = self.get_page_width()
+        resized_height = self.get_page_height()
 
         if background_img:
-            xref, width, height = background_img
-            # Extract and save the largest image as PNG
+            xref = background_img[0]
+
             try:
                 pix = fitz.Pixmap(file, xref)
-                if pix.n - pix.alpha > 3:  # CMYK: convert to RGB
+                if pix.n - pix.alpha > 3: 
                     pix = fitz.Pixmap(fitz.csRGB, pix)
-            # Create a temporary file to save the image
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
                     tmp_file_path = tmp_file.name
-                    pix.save(tmp_file_path)
 
-                files = {
-                    'Image': ('norm_image_{}.png'.format(xref), open(tmp_file_path, 'rb'), 'image/png'),
-                    'LowResImage': ('low_res_{}.jpeg'.format(xref), open(tmp_file_path, 'rb'), 'image/jpeg')
-                }
 
-                os.remove(tmp_file_path)  # Clean up temporary file
+                    pix_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
-                return files
+
+                    pix_resized = pix_pil.resize((resized_width, resized_height))
+
+                    # Save the resized image to the temporary file
+                    pix_resized.save(tmp_file_path, format='PNG')
+                    files = {
+                        'Image': ('norm_image_{}.png'.format(xref), open(tmp_file_path, 'rb'), 'image/png'),
+                        'LowResImage': ('low_res_{}.jpeg'.format(xref), open(tmp_file_path, 'rb'), 'image/jpeg')
+                    }
+
+                    os.remove(tmp_file_path)  # Clean up temporary file
+
+                    return files
 
             except Exception as e:
                 print(f"Error saving image: {e}")
             finally:
                 if pix:
-                    pix = None  # Release resources after saving
-
+                    pix = None 
         else:
             try:
-                # Create a small transparent PNG image
-                empty_image = Image.new('RGB', (1536,1536), (255, 255, 255))
+                # Create a blank white image 
+                empty_image = Image.new('RGB', (resized_width,resized_height), (255, 255, 255))
                 
                 # Save the empty image to a temporary file
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
                     tmp_file_path = tmp_file.name
                     empty_image.save(tmp_file_path, format='PNG')
 
-                # Prepare the files dictionary with the empty image
+
                 files = {
                     'Image': ('empty_image.png', open(tmp_file_path, 'rb'), 'image/png'),
-                    'LowResImage': ('empty_image.png', open(tmp_file_path, 'rb'), 'image/png')  # Assuming low-res image should also be empty
+                    'LowResImage': ('empty_image.png', open(tmp_file_path, 'rb'), 'image/png')
                 }
 
                 os.remove(tmp_file_path)  # Clean up temporary file
@@ -154,57 +163,6 @@ class Page:
             
             except Exception as e:
                 print(f"Error creating empty image: {e}")
-
-
-  
-    def get_center(self,bbox):
-        """
-        Gets the center coordinates of a bbox
-
-        :param bbox: Bbox of text 
-        :return: Tuple (x, y) representing the center coordinates of bbox
-        """
-        center_x = (bbox[0] + bbox[2]) / 2
-        center_y = (bbox[1] + bbox[3]) / 2
-
-        return center_x, center_y
-       
-    def get_text_width(self, bbox_list):
-        """
-        Gets the maximum bbox width
-
-        :param bbox_list: List of bboxes
-        :return: Maximum width  
-        """
-        min_x, max_x = float("inf"), float("-inf")
-
-        for bbox in bbox_list:
-            min_x = min(min_x, bbox[0])
-            max_x = max(max_x, bbox[2])
-
-        return max_x - min_x
-    
-    def get_text_height(self, text, fontfile, fontsize, specified_width):
-        """
-        Calculates the new height required for the new text box
-
-        :param text: Text to insert
-        :param font_name: Font of text
-        :param font_size: Font size of text
-        :param specified_width: Predetermined specified width
-        :return: Height of new text box
-        """
-        dummy_doc = fitz.open()
-        dummy_page = dummy_doc.new_page()
-        dummy_page_obj = Page(dummy_page)
-        INITIAL_HEIGHT = 10000
-        used_px = dummy_page_obj.insert_text(fitz.Rect(0, 0, specified_width,
-                                                       INITIAL_HEIGHT), text,
-                                             fontsize, fontfile, (0, 0, 0), 1)
-        rect_height = INITIAL_HEIGHT - used_px 
-        dummy_doc.close()
-
-        return rect_height
 
     def get_text_bbox(self):
         """
@@ -221,116 +179,10 @@ class Page:
                     for span in line["spans"]:
                         bbox_list.append(span["bbox"])
 
-        # Sort from top to bottom, then left to right
+
         bbox_list.sort(key=lambda x: (x[1], x[0]))
     
         return bbox_list
-    
-    def get_image_rects(self):
-        """
-        Gets the list of image rects in page
-
-        :return: List of rects 
-        """
-        images = self.page.get_images()
-        bbox_list = []
-
-        for image in images:
-            rect = self.page.get_image_rects(image)[0]
-            bbox_list.append(rect)
-
-        # Sort from top to bottom, then left to right
-        bbox_list.sort(key=lambda x: (x[1], x[0])) 
-
-        return bbox_list
-      
-    def get_fontname(self):
-        """
-        Get the font names of the current text in the page for each text box.
-
-        :return: Dictionary mapping text box number to font name, or None if no text is found
-        """
-        text_instances = self.page.get_text("dict")["blocks"]
-        font_names = {}
-
-        # Iterate over text blocks
-        for block in text_instances:
-            if block['type'] == 0:  # Ensure this block contains text
-                for line in block["lines"]:
-                    for span in line["spans"]:
-                        bbox_list = self.get_text_bbox()
-                        for index, bbox in enumerate(bbox_list):
-                            if bbox == span.get("bbox", None):
-                                text_box_number = index + 1
-                        font_name = span.get("font", None)
-                        if text_box_number is not None and font_name:
-                            font_names[text_box_number] = font_name
-                        # Assuming there are only 4 text boxes maximum
-                        if len(font_names) >= 4:
-                            # Sort font_names by text_box_number in ascending order
-                            font_names = dict(sorted(font_names.items(), key=lambda item: item[0]))
-                            return font_names
-
-        if font_names:
-            # Sort font_names by text_box_number in ascending order
-            font_names = dict(sorted(font_names.items(), key=lambda item: item[0]))
-            return font_names
-        else:
-            return None
-
-
-    
-    def get_fontsize(self):
-        """
-        Get fontsize of current text in page. (Assuming all text on page have same size)
-
-        :return: Fontsize if page contains text, else returns None 
-        """
-        fontsize = None
-        blocks = self.page.get_text("dict")["blocks"]
-        
-        for block in blocks:
-            if "lines" in block:
-                for line in block["lines"]:
-                    for span in line["spans"]:
-                        fontsize = span["size"]
-                        break
-                    if fontsize:
-                        break
-                if fontsize:
-                    break
-        
-        return fontsize
-
-    def get_text_color(self):
-        """
-        Get color of current text in page.
-
-        :return: Text color in RGB format if page contains text, else returns None 
-        """
-        color = None
-        blocks = self.page.get_text("dict")["blocks"]
-        
-        for block in blocks:
-            if "lines" in block:
-                for line in block["lines"]:
-                    for span in line["spans"]:
-                        color = span["color"]
-                        break
-                    if color:
-                        break
-                if color:
-                    break
-        
-        return None if not color else tuple(val / 255 for val in fitz.sRGB_to_rgb(color))
-        
-    def contains_text(self):
-        """
-        Checks whether current page contains text.
-
-        :return: True if page contains text bboxes, False otherwise 
-        """
-        return True if self.page.get_text("text") else False
     
     def contains_images(self):
         """
@@ -340,18 +192,11 @@ class Page:
         """
         return True if self.page.get_images() else False
     
-    def get_char_image_rect(self):
+    def contains_text(self):
         """
-        Gets the Rect for character image
+        Checks whether current page contains text.
 
-        :return: Rect of character image 
+        :return: True if page contains text bboxes, False otherwise 
         """
-        images = self.page.get_images()
-        res = None
-
-        for image in images:
-            rect = self.page.get_image_rects(image)[0]
-            if rect[0] > self.page.rect.x0:
-                res = rect
-        
-        return res
+        return True if self.page.get_text("text") else False
+    
